@@ -626,7 +626,9 @@ for msg in final_messages:
             elif '"goal_type": "spending_limit"' in msg.content:
                 goal_type = 'spending_limit'
             break
-
+```
+Now, add the following lines in the same function:
+```python
 return jsonify({
     "response": final_messages[-1].content,
     "session_id": session_id,
@@ -1079,21 +1081,22 @@ In the filter tabs section, add a new button:
 In the widget rendering loop, add goal detection and styling:
 
 ```typescript
-// Add detection
+const isRefreshing = refreshingWidgets.has(widget.id);
+// Add detection there
 const isGoal = widget.widget_type === 'goal';
 
 // Update border color
 className={`bg-white rounded-xl shadow-sm border overflow-hidden transition-all hover:shadow-md ${
   expandedWidget === widget.id ? 'col-span-full' : ''
-} ${isSimulation ? 'border-amber-200' : isGoal ? 'border-green-200' : 'border-gray-200'}`}
+} ${isSimulation ? 'border-amber-200' : isGoal ? 'border-green-200' : 'border-gray-200'}`}  // 👈 Update here
 
 // Update header gradient
 <div className={`px-6 py-4 border-b flex items-center justify-between ${
   isSimulation 
     ? 'bg-gradient-to-r from-amber-50 to-orange-50 border-amber-100' 
-    : isGoal
-      ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-100'
-      : 'bg-gradient-to-r from-gray-50 to-white border-gray-100'
+    : isGoal // 👈 ADD
+      ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-100' // 👈 ADD
+      : 'bg-gradient-to-r from-gray-50 to-white border-gray-100' // 👈 ADD
 }`}>
 
 // Update icon
@@ -1106,12 +1109,23 @@ className={`bg-white rounded-xl shadow-sm border overflow-hidden transition-all 
 )}
 
 // Add goal badge
-{isGoal && (
+{isSimulation ? (
+  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200">
+    <Sliders className="h-3 w-3" />
+    Interactive
+  </span>
+//  New ADD
+) : isGoal ? (
   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-200">
     <Target className="h-3 w-3" />
     Goal
   </span>
-)}
+//  New END
+) : isDynamic ? (
+  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-cyan-50 text-cyan-700 border border-cyan-200">
+    <Zap className="h-3 w-3" />
+    Live
+</span>
 ```
 
 #### 5.6 Update Widget Content Height and Renderer
@@ -1123,7 +1137,7 @@ className={`bg-white rounded-xl shadow-sm border overflow-hidden transition-all 
     ? 'h-[600px]' 
     : isSimulation 
       ? 'h-[480px]' 
-      : isGoal
+      : isGoal.  // 👈 ADD
         ? 'h-[320px]'  // 👈 ADD
         : 'h-80'
 }`}>
@@ -1131,7 +1145,7 @@ className={`bg-white rounded-xl shadow-sm border overflow-hidden transition-all 
 // Update renderer routing
 {isSimulation ? (
   <SimulationWidgetRenderer widget={widget} />
-) : isGoal ? (
+) : isGoal ? ( // 👈 ADD
   <GoalWidgetRenderer widget={widget} />  // 👈 ADD
 ) : (
   <AIWidgetRenderer 
@@ -1147,7 +1161,7 @@ Goals are dynamic, so they need the refresh button. Update the condition:
 
 ```typescript
 {/* Refresh button for dynamic widgets AND goals */}
-{(isDynamic || isGoal) && !isSimulation && (
+{(isDynamic || isGoal) && !isSimulation && ( // 👈 Update here
   <button
     onClick={() => handleRefreshWidget(widget.id)}
     // ... rest stays the same
@@ -1180,6 +1194,8 @@ interface Message {
 ```
 
 #### 6.2 Add Goal Icon Helper
+
+After ***getSimulationIcon***, add:
 
 ```typescript
 const getGoalIcon = (goalType: string | undefined) => {
@@ -1214,56 +1230,54 @@ const quickSuggestions = activeTab === 'ai-module' ? [
 In the message rendering, add after the simulation indicator:
 
 ```typescript
-{/* Goal creation indicator */}
-{message.widgetCreated && message.widgetType === 'goal' && (
-  <div className={`mt-2 p-2 rounded-lg text-xs ${getGoalIcon(message.goalType).bg} border ${getGoalIcon(message.goalType).border}`}>
-    <div className="flex items-center gap-1.5">
-      <Target className={`h-3.5 w-3.5 ${getGoalIcon(message.goalType).color}`} />
-      <span className={`font-medium ${getGoalIcon(message.goalType).color}`}>
-        🎯 {getGoalIcon(message.goalType).label} created!
-      </span>
-    </div>
-    <p className="mt-1 text-gray-600">
-      Check the AI Module tab to track your progress. It updates automatically!
-    </p>
-  </div>
-)}
+<div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
+  {messages.map((message) => (
+    <div
+      key={message.id}
+      className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+    >
+      <div
+        className={`max-w-[85%] rounded-2xl px-4 py-2.5 ${
+          message.role === 'user'
+            ? 'bg-blue-600 text-white rounded-br-md'
+            : 'bg-white text-gray-800 shadow-sm border border-gray-100 rounded-bl-md'
+        }`}
+      >
+        <div className="flex items-start gap-2">
+          {message.role === 'assistant' && (
+            <Bot className="h-4 w-4 mt-0.5 text-blue-600 flex-shrink-0" />
+          )}
+          <div className="flex-1">
+            <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+
+          {/* Goal creation indicator (NEW) */}
+          {message.widgetCreated && message.widgetType === 'goal' && (
+            <div className={`mt-2 p-2 rounded-lg text-xs ${getGoalIcon(message.goalType).bg} border ${getGoalIcon(message.goalType).border}`}>
+              <div className="flex items-center gap-1.5">
+                <Target className={`h-3.5 w-3.5 ${getGoalIcon(message.goalType).color}`} />
+                <span className={`font-medium ${getGoalIcon(message.goalType).color}`}>
+                  🎯 {getGoalIcon(message.goalType).label} created!
+                </span>
+              </div>
+              <p className="mt-1 text-gray-600">
+                Check the AI Module tab to track your progress. It updates automatically!
+              </p>
+            </div>
+          )}
+          // ... rest stays the same
 ```
 
 ---
 
 # 🧪 Testing Your Implementation
 
-## Test Cases to Verify
+## Test Cases to Verify Examples (check with something that makes sense based on the values of your demo)
 
 ### 1. Savings Goal
 ```
-User: "I want to save $5000 for a vacation by December 2025"
+User: "I want to save $10000 for a vacation by December 2025 in my Hundred Checking account"
 Expected: Creates a savings goal with target $5000 and deadline
 ```
-
-### 2. Debt Payoff Goal
-```
-User: "Help me track paying off my credit card, I owe about $3000"
-Expected: Creates a debt payoff goal with original_debt $3000
-```
-
-### 3. Spending Budget
-```
-User: "Set a $400 monthly budget for restaurants"
-Expected: Creates a spending_limit goal with category "Restaurants"
-```
-
-### 4. Refresh Functionality
-```
-Action: Click the refresh button on a goal widget
-Expected: Data updates with latest account balances
-```
-
-### 5. Edge Cases
-- Goal with 0% progress
-- Goal with 100% progress (celebration!)
-- Spending budget that's over limit (warning!)
 
 ---
 
