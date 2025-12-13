@@ -1273,7 +1273,7 @@ In the message rendering, add after the simulation indicator:
 
 ## Test Cases to Verify Examples (check with something that makes sense based on the values of your demo)
 
-### 1. Savings Goal
+### Savings Goal
 ```
 User: "I want to save $10000 for a vacation by December 2025 in my Hundred Checking account"
 Expected: Creates a savings goal with target $5000 and deadline
